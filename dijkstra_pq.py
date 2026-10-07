@@ -26,3 +26,19 @@ def dijkstra(grafo, origen):
                 heapq.heappush(pq, (nueva_distancia, v))
 
     return distancias, anteriores
+
+
+def reconstruir_camino(anteriores, origen, destino):
+    camino = []
+    actual = destino
+
+    while actual is not None:
+        camino.append(actual)
+        actual = anteriores[actual]
+
+    camino.reverse()
+
+    if camino[0] != origen:
+        return []
+
+    return camino
