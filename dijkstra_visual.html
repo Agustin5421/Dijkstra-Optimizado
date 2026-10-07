@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dijkstra + Priority Queue — visualizador</title>
+<style>
+:root{--bg:#0b1020;--panel:#121a2d;--panel2:#18233b;--text:#edf2ff;--muted:#9aa8c4;--accent:#6ee7ff;--green:#59d98e;--yellow:#ffd166;--red:#ff7185;--line:#40506f}
+*{box-sizing:border-box} body{margin:0;background:linear-gradient(135deg,#090e1c,#101a31);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:1250px;margin:auto;padding:28px}.hero{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:18px}
+h1{font-size:32px;margin:0 0 6px}.sub{color:var(--muted);font-size:15px}.grid{display:grid;grid-template-columns:1.3fr .7fr;gap:18px}
+.card{background:rgba(18,26,45,.92);border:1px solid #263451;border-radius:18px;padding:18px;box-shadow:0 12px 35px #0004}
+h2{font-size:17px;margin:0 0 12px}.graph{height:390px;position:relative;background:radial-gradient(circle at 50% 45%,#1b2b4b,#10182a 65%);border-radius:14px;overflow:hidden}
+svg{width:100%;height:100%}.edge{stroke:#536583;stroke-width:5}.edge.active{stroke:var(--yellow);stroke-width:8}.edge.final{stroke:var(--green);stroke-width:8}
+.node circle{fill:#17243d;stroke:#7e91b7;stroke-width:4}.node text{fill:#fff;font-weight:800;font-size:18px;text-anchor:middle;dominant-baseline:middle}.node.current circle{stroke:var(--yellow);fill:#4a3c18}.node.done circle{stroke:var(--green);fill:#153c2b}.node.source circle{stroke:var(--accent)}
+.weight{fill:#c9d4eb;font-weight:700;font-size:15px;text-anchor:middle}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:9px 8px;border-bottom:1px solid #2b3955;text-align:left}.table th{color:var(--muted);font-size:12px;text-transform:uppercase}.hl{background:#263653}.inf{color:#9aa8c4}
+.pq{display:flex;flex-wrap:wrap;gap:8px;min-height:48px}.chip{background:#202f4c;border:1px solid #3b4e70;border-radius:999px;padding:8px 12px;font-weight:700}.chip.first{border-color:var(--yellow);color:var(--yellow)}
+.controls{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}.btn{border:1px solid #3b4e70;background:#1a2842;color:#fff;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:700}.btn:hover{background:#253756}.primary{background:#24627a;border-color:#3988a5}.primary:hover{background:#2c7894}
+.explain{line-height:1.55;color:#d9e2f5}.code{background:#0a0f1b;border-radius:12px;padding:13px;font:13px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;color:#dce7ff}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#203451;color:var(--accent);font-size:12px;font-weight:800}.step{color:var(--yellow);font-weight:800}
+footer{color:var(--muted);font-size:12px;margin-top:18px}@media(max-width:900px){.grid{grid-template-columns:1fr}.cols{grid-template-columns:1fr}.hero{align-items:start;flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div><span class="badge">DIJKSTRA VISUAL</span><h1>¿Qué está haciendo el algoritmo?</h1><div class="sub">Avanzá paso a paso y mirá cómo cambian el grafo, las distancias, los anteriores y la Priority Queue.</div></div>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>1. Grafo</h2>
+      <div class="graph">
+        <svg viewBox="0 0 760 390" aria-label="grafo de ejemplo">
+          <line id="ab" class="edge" x1="170" y1="105" x2="590" y2="105"/>
+          <line id="ac" class="edge" x1="170" y1="105" x2="170" y2="285"/>
+          <line id="bc" class="edge" x1="590" y1="105" x2="170" y2="285"/>
+          <line id="bd" class="edge" x1="590" y1="105" x2="590" y2="285"/>
+          <line id="cd" class="edge" x1="170" y1="285" x2="590" y2="285"/>
+          <text class="weight" x="380" y="88">4</text><text class="weight" x="145" y="198">1</text>
+          <text class="weight" x="390" y="205">2</text><text class="weight" x="615" y="198">1</text>
+          <text class="weight" x="380" y="307">5</text>
+          <g id="na" class="node source"><circle cx="170" cy="105" r="32"/><text x="170" y="105">A</text></g>
+          <g id="nb" class="node"><circle cx="590" cy="105" r="32"/><text x="590" y="105">B</text></g>
+          <g id="nc" class="node"><circle cx="170" cy="285" r="32"/><text x="170" y="285">C</text></g>
+          <g id="nd" class="node"><circle cx="590" cy="285" r="32"/><text x="590" y="285">D</text></g>
+        </svg>
+      </div>
+      <div class="controls">
+        <button class="btn" onclick="prev()">← Anterior</button>
+        <button class="btn primary" onclick="next()">Siguiente →</button>
+        <button class="btn" onclick="togglePlay()" id="play">▶ Reproducir</button>
+        <button class="btn" onclick="reset()">↺ Reiniciar</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2. ¿Qué está pasando?</h2>
+      <div id="explain" class="explain"></div>
+      <h2 style="margin-top:18px">Priority Queue</h2>
+      <div id="pq" class="pq"></div>
+    </section>
+
+    <section class="card">
+      <h2>3. Distancias conocidas</h2>
+      <table class="table"><thead><tr><th>Vértice</th><th>Distancia desde A</th></tr></thead><tbody id="dist"></tbody></table>
+    </section>
+
+    <section class="card">
+      <h2>4. Anteriores</h2>
+      <table class="table"><thead><tr><th>Vértice</th><th>Anterior</th></tr></thead><tbody id="prevs"></tbody></table>
+    </section>
+
+    <section class="card" style="grid-column:1/-1">
+      <h2>5. El código que estás viendo</h2>
+      <div class="code">distancia_actual, u = heapq.heappop(pq)
+
+for v, peso in grafo[u]:
+    nueva_distancia = distancia_actual + peso
+
+    if nueva_distancia &lt; distancias[v]:
+        distancias[v] = nueva_distancia
+        anteriores[v] = u
+        heapq.heappush(pq, (nueva_distancia, v))</div>
+      <p class="explain"><b>Idea:</b> la Priority Queue siempre deja arriba la menor distancia conocida. Por eso D puede empezar en ∞, luego pasar a 6 y finalmente mejorar a 4.</p>
+    </section>
+  </div>
+  <footer>Ejemplo: A–B=4, A–C=1, C–B=2, B–D=1, C–D=5. Complejidad con heap: O(E log V).</footer>
+</div>
+
+<script>
+const states=[
+{title:"Inicio",text:"Inicializamos todas las distancias en ∞ porque todavía no conocemos ningún camino. Solo el origen A vale 0. La Priority Queue contiene (0, A).",pq:["(0, A)"],d:{A:"0",B:"∞",C:"∞",D:"∞"},p:{A:"—",B:"—",C:"—",D:"—"},current:"A",active:[],final:[]},
+{title:"Paso 1 — sacamos A",text:"heapq.heappop() devuelve A porque tiene la menor distancia: 0. Ahora recorremos sus vecinos.",pq:["(1, C)","(4, B)"],d:{A:"0",B:"4",C:"1",D:"∞"},p:{A:"—",B:"A",C:"A",D:"—"},current:"A",active:["ab","ac"],final:[]},
+{title:"Paso 2 — sacamos C",text:"C tiene distancia 1, menor que B=4. Desde C podemos mejorar B a 3 y descubrir D con distancia 6.",pq:["(3, B)","(4, B)","(6, D)"],d:{A:"0",B:"3",C:"1",D:"6"},p:{A:"—",B:"C",C:"A",D:"C"},current:"C",active:["bc","cd"],final:[]},
+{title:"Paso 3 — sacamos B",text:"B tiene distancia 3. Desde B llegamos a D con peso 1: 3+1=4. Como 4 < 6, mejoramos D.",pq:["(4, D)","(4, B)","(6, D)"],d:{A:"0",B:"3",C:"1",D:"4"},p:{A:"—",B:"C",C:"A",D:"B"},current:"B",active:["bd"],final:[]},
+{title:"Paso 4 — solución",text:"La mejor distancia a D es 4. Los anteriores reconstruyen A → C → B → D. ¡Terminamos!",pq:[],d:{A:"0",B:"3",C:"1",D:"4"},p:{A:"—",B:"C",C:"A",D:"B"},current:"D",active:[],final:["ac","bc","bd"]}
+];
+let s=0, timer=null;
+function render(){
+ const x=states[s];
+ document.getElementById("explain").innerHTML=`<div class="step">${x.title}</div><p>${x.text}</p>`;
+ document.getElementById("pq").innerHTML=x.pq.length?x.pq.map((v,i)=>`<span class="chip ${i===0?'first':''}">${v}</span>`).join(""):"<span class='inf'>vacía</span>";
+ document.getElementById("dist").innerHTML=Object.entries(x.d).map(([k,v])=>`<tr class="${k===x.current?'hl':''}"><td><b>${k}</b></td><td>${v}</td></tr>`).join("");
+ document.getElementById("prevs").innerHTML=Object.entries(x.p).map(([k,v])=>`<tr class="${k===x.current?'hl':''}"><td><b>${k}</b></td><td>${v}</td></tr>`).join("");
+ ["ab","ac","bc","bd","cd"].forEach(id=>{let e=document.getElementById(id);e.className="edge";if(x.active.includes(id))e.classList.add("active");if(x.final.includes(id))e.classList.add("final")});
+ ["A","B","C","D"].forEach(v=>{let e=document.getElementById("n"+v.toLowerCase());e.className="node";if(v==="A")e.classList.add("source");if(v===x.current)e.classList.add("current");if(x.final.length && ["A","C","B","D"].includes(v))e.classList.add("done")});
+}
+function next(){if(s<states.length-1){s++;render()}else stop()}
+function prev(){if(s>0){s--;render()}}
+function reset(){stop();s=0;render()}
+function togglePlay(){if(timer)stop();else{document.getElementById("play").textContent="⏸ Pausar";timer=setInterval(()=>{if(s<states.length-1)next();else stop()},1800)}}
+function stop(){if(timer){clearInterval(timer);timer=null}document.getElementById("play").textContent="▶ Reproducir"}
+render();
+</script>
+</body>
+</html>
