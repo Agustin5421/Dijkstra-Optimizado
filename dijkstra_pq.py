@@ -26,3 +26,8 @@ def dijkstra(grafo, origen):
                 heapq.heappush(pq, (nueva_distancia, v))
 
     return distancias, anteriores
+
+distancias, anteriores = dijkstra(grafo, "A")
+
+print(distancias)
+print(anteriores)
