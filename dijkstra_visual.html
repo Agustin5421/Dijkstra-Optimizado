@@ -108,7 +108,7 @@ function render(){
  ["A","B","C","D"].forEach(v=>{let e=document.getElementById("n"+v.toLowerCase());e.className="node";if(v==="A")e.classList.add("source");if(v===x.current)e.classList.add("current");if(x.final.length && ["A","C","B","D"].includes(v))e.classList.add("done")});
 }
 function next(){if(s<states.length-1){s++;render()}else stop()}
-function prev(){if(s>0){s--;render()}}
+function prev(){stop();if(s>0){s--;render()}}
 function reset(){stop();s=0;render()}
 function togglePlay(){if(timer)stop();else{document.getElementById("play").textContent="⏸ Pausar";timer=setInterval(()=>{if(s<states.length-1)next();else stop()},1800)}}
 function stop(){if(timer){clearInterval(timer);timer=null}document.getElementById("play").textContent="▶ Reproducir"}
