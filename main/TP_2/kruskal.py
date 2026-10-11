@@ -46,5 +46,15 @@ def Kruskal(grafo):
     for peso, u, v in edges:
         if union(u, v):
             mst.append((u, v, peso))
-
     return mst
+##############################
+mi_grafo = [
+    [0, 1, 4, 0, 2],
+    [1, 0, 0, 3, 3],
+    [4, 0, 0, 1, 1],
+    [0, 3, 1, 0, 2],
+    [2, 3, 1, 2, 0]
+]
+mst = Kruskal(mi_grafo)
+for componente in mst:
+  print(componente)
