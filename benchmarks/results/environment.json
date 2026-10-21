@@ -1,0 +1,53 @@
+{
+  "timestamp_utc": "2026-10-21T00:05:52.476717+00:00",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "python": "3.14.8 (main, Sep 30 2026, 17:55:09) [Clang 21.0.0 (clang-2100.3.34.2)]",
+  "executable": "/private/tmp/dijkstra-bench-venv/bin/python",
+  "seeds": [
+    17,
+    43,
+    91
+  ],
+  "repetitions": 7,
+  "cases": 114,
+  "configurations": 38,
+  "timer": "perf_counter_ns / System.nanoTime",
+  "target_batch_ms": 5,
+  "warmup_batches": 3,
+  "python_gc": "desactivado solo durante tiempos",
+  "java_flags": "-Xms256m -Xmx1g; una JVM; GC habilitado; sin JMH",
+  "git_revision": "ea20107b3ec030863a50ba7669c5d3a635026fb1",
+  "source_sha256": {
+    "main/TP_1/dijkstra_pq.py": "31ae54ad3df002fa061724e9d8b5976a04a8a2fb4764bece3c758c3a832a444f",
+    "main/TP_1/dijkstra_normal.py": "cb938b418f0f9ccc2a46134dd01db6b22c6ce33908105d59ef69e54e6c101cec",
+    "main/TP_1_Java/src/Main.java": "30cba63b40d928e1a602b06eafbda332ff8f11dce05050fb83c85a5e9ec80e8b",
+    "main/TP_1_Java/src/adt/Arista.java": "f3b692c73deec84f5e4b11e5f907a56cb545b6a3777a4213f03318ef9ae3f376",
+    "main/TP_1_Java/src/adt/ColaPrioridadADT.java": "bda59bc6b9e4534dd010a6cbab6657de86530535d6ffc09334770783beea2b7a",
+    "main/TP_1_Java/src/adt/GrafoADT.java": "49154db68dedd19b9c8ef6b93ea99db5a9872d1782659efe2fb87136e615641a",
+    "main/TP_1_Java/src/algoritmos/Dijkstra.java": "e1410df9daa2625614e7cbba87f214614a7832b9e1c5af9d7100a33ac579d66f",
+    "main/TP_1_Java/src/algoritmos/DijkstraNormal.java": "4f3f159b5031bc1f23275a5c01a562e07b02e2889984f80d78988ba01db4d3d2",
+    "main/TP_1_Java/src/algoritmos/ResultadoDijkstra.java": "86ba9460be0f21fc3145a9d74fb775ec3245ffffbaaba88c8300a51a587b57d3",
+    "main/TP_1_Java/src/impl/ColaPrioridadHeap.java": "efd8e20caf5739f7923d249baa777e59d27110027703327b99ef1b4033e87dd8",
+    "main/TP_1_Java/src/impl/GrafoListaAdyacencia.java": "da404876dd19ec9a45300a6fbf69d64badfc0a572b3e4e920baafcba67436505",
+    "benchmarks/metrics.py": "e0ac9dd589e88ca75ba587ee49c168775ac736bf7265942908e0cf19f5b11c19",
+    "benchmarks/run.py": "3422027032828d4bfacdfe455599f7ebded2dc5ccbfb709c9ed3bd3a825ba0a3",
+    "benchmarks/scenarios.py": "4ef6a9a61fde22147a8cd83268b4ef6333efded503e56e3cf69224cc40d19c32",
+    "benchmarks/BenchmarkDijkstra.java": "dc45c71b58b3a07daa44a0c49697fc8363e1ceff7b8467b2810f5117d24dde44",
+    "benchmarks/VerifyDijkstra.java": "d681673990665b92b0bc10b07d2b3137f2ea975b85b17a672c785e42ca249176"
+  },
+  "java_version": "openjdk version \"21.0.12.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Microsoft-14941480 (build 21.0.12.1+1-LTS)\nOpenJDK 64-Bit Server VM Microsoft-14941480 (build 21.0.12.1+1-LTS, mixed mode, sharing)\n",
+  "postprocessing": {
+    "description": "Se regeneraron solo los gr\u00e1ficos de escalado con ticks legibles. Tiempos y algoritmos sin cambios.",
+    "plotting_run_py_sha256": "9cb93ac964c670d921d7291c6c36190e780baa42b3f23ded948aba203111eed9",
+    "absolute_time_charts": {
+      "description": "Gr\u00e1ficos adicionales con dos barras por escenario a partir de las medianas guardadas; tiempos originales sin cambios.",
+      "plotting_run_py_sha256": "126df9e62538bba6c25a8503895e7cbadf9ab1c2d74d41fa3396cd3c52bd242c"
+    }
+  },
+  "verification_source_sha256": {
+    "tests/TP_1/test_comparacion.py": "7228dc962405a08067d9b1afbfdac51f8d18430390898431d15701f9d8bbd41a",
+    "tests/TP_1/test_dijkstra_pq.py": "c219f6789b6819186648a5e9c7539911b9fa7a3326b6e37b0e59b302a91c3bcd",
+    "tests/TP_1/test_java.py": "e78cc2bc0452db14e78f1dcb8ffc561f80103d62739027c131c0fdb068382eb2"
+  }
+}
