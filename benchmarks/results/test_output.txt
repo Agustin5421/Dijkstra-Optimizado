@@ -1,0 +1,10 @@
+Comando ejecutado desde la raíz:
+/private/tmp/dijkstra-bench-venv/bin/python -m pytest -q -ra
+
+........................................................................ [ 51%]
+..........................................................x........xx    [100%]
+=========================== short test summary info ============================
+XFAIL tests/TP_1/test_comparacion.py::test_heap_etiquetas_heterogeneas_con_empate - Contrato actual: el heap compara etiquetas al empatar
+XFAIL tests/TP_1/test_java.py::test_java_limites_numericos[overflow] - Limitaciones numéricas reproducidas del Java original
+XFAIL tests/TP_1/test_java.py::test_java_limites_numericos[sentinel] - Limitaciones numéricas reproducidas del Java original
+138 passed, 3 xfailed in 0.53s
