@@ -1,0 +1,679 @@
+<title>Ford-Fulkerson: flujo máximo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: una diapositiva por pantalla, barra inferior con navegación.
+   La red se dibuja como cañerías: el grosor del agua es el flujo, el caño gris es la capacidad. */
+:root {
+  --bg: #EEF3F4;
+  --surface: #FFFFFF;
+  --ink: #10222A;
+  --muted: #566C75;
+  --line: #C6D3D8;
+  --pipe: #DCE6E9;
+  --flow: #0D8584;
+  --path: #D9820F;
+  --cut: #C23F36;
+  --cut-soft: rgba(194, 63, 54, .08);
+  --code-bg: #10212A;
+  --code-fg: #DCE8EC;
+  --code-kw: #F2A64A;
+  --code-str: #8FD6A4;
+  --code-com: #7F98A3;
+  --code-num: #F08A80;
+  --code-fn: #7FC8F0;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+  --bar-h: 56px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0C151A; --surface: #13222A; --ink: #E3ECEF; --muted: #8EA4AD; --line: #2B3E47; --pipe: #1E3038;
+    --flow: #36C3BF; --path: #F2A541; --cut: #EF6F63; --cut-soft: rgba(239, 111, 99, .10);
+    --code-bg: #081014; --code-fg: #DCE8EC; --code-kw: #F2A64A; --code-str: #8FD6A4; --code-com: #6F8893; --code-num: #F08A80; --code-fn: #7FC8F0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0C151A; --surface: #13222A; --ink: #E3ECEF; --muted: #8EA4AD; --line: #2B3E47; --pipe: #1E3038;
+  --flow: #36C3BF; --path: #F2A541; --cut: #EF6F63; --cut-soft: rgba(239, 111, 99, .10);
+  --code-bg: #081014; --code-fg: #DCE8EC; --code-kw: #F2A64A; --code-str: #8FD6A4; --code-com: #6F8893; --code-num: #F08A80; --code-fn: #7FC8F0;
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: clamp(15px, 1.25vw, 18px);
+  line-height: 1.55;
+  overflow: hidden;
+}
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.08; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h2 { font-size: clamp(1.7rem, 3.4vw, 2.6rem); font-weight: 800; }
+h3 { font-size: 1.15rem; font-weight: 700; }
+p { margin: 0; }
+code { font-family: var(--font-mono); font-size: .92em; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--path); outline-offset: 2px; border-radius: 6px; }
+
+/* Barra inferior */
+.bottombar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  min-height: var(--bar-h);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 8px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg); border-top: 1px solid var(--line);
+}
+.progress { display: flex; gap: 3px; flex: 1 1 200px; min-width: 120px; }
+.progress span { flex: 1; height: 6px; border-radius: 3px; background: var(--flow); opacity: .22; cursor: pointer; }
+.progress span.on { opacity: 1; }
+.counter { color: var(--muted); font-variant-numeric: tabular-nums; font-family: var(--font-mono); font-size: .85rem; }
+.nav { display: flex; gap: 8px; }
+.btn {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 10px;
+  padding: 7px 14px; cursor: pointer; font-weight: 600; font-size: .9rem;
+}
+.btn:hover { border-color: var(--ink); }
+.btn[disabled] { opacity: .4; cursor: default; }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* Diapositivas */
+.slide {
+  position: fixed; inset: 0;
+  overflow-y: auto; overflow-x: hidden;
+  padding-top: calc(env(safe-area-inset-top, 0px) + clamp(28px, 6vh, 64px));
+  padding-bottom: calc(var(--bar-h) + env(safe-area-inset-bottom, 0px) + 32px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1140px; margin: 0 auto; display: grid; gap: clamp(18px, 3vh, 32px); }
+.eyebrow { font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; color: var(--flow); }
+.lead { font-size: 1.15em; color: var(--muted); max-width: 62ch; }
+.split { display: grid; grid-template-columns: 1.25fr 1fr; gap: clamp(20px, 3vw, 44px); align-items: start; }
+.split > * { min-width: 0; }
+.stack { display: grid; gap: 14px; align-content: start; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: grid; gap: 6px; align-content: start; }
+.card .formula { font-family: var(--font-mono); font-size: .95rem; background: var(--bg); padding: 4px 10px; border-radius: 8px; justify-self: start; }
+.card p { color: var(--muted); }
+.figure { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px; overflow-x: auto; }
+.figure svg { display: block; width: 100%; height: auto; min-width: 300px; }
+.caption { font-size: .85rem; color: var(--muted); }
+.callout { border-left: 4px solid var(--flow); padding: 10px 16px; background: var(--surface); border-radius: 0 12px 12px 0; }
+
+.cover h1 { font-size: clamp(2.8rem, 7.5vw, 5.6rem); font-weight: 800; letter-spacing: -0.03em; }
+.cover h1 .hy { color: var(--flow); }
+
+/* Pseudocódigo */
+.pseudo { list-style: none; counter-reset: l; margin: 0; padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; font-family: var(--font-mono); font-size: .95rem; display: grid; gap: 6px; overflow-x: auto; }
+.pseudo li { counter-increment: l; white-space: pre; }
+.pseudo li::before { content: counter(l); display: inline-block; width: 2em; color: var(--muted); }
+.pseudo .k { color: var(--path); font-weight: 600; }
+
+/* Paso a paso */
+.iter-label { font-family: var(--font-mono); color: var(--muted); font-size: .85rem; }
+.path-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-family: var(--font-mono); font-weight: 600; }
+.path-chips .n { padding: 2px 9px; border-radius: 8px; border: 2px solid var(--path); }
+.path-chips .a { color: var(--path); }
+.path-chips .a.rev { color: var(--cut); }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.stat .v { font-family: var(--font-display); font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat .l { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.stat.total .v { color: var(--flow); }
+.explain { min-height: 6em; }
+.step-ctrl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.step-dots { display: flex; gap: 6px; margin-left: 4px; }
+.step-dots button { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--muted); background: transparent; padding: 0; cursor: pointer; }
+.step-dots button.on { background: var(--path); border-color: var(--path); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .85rem; color: var(--muted); }
+.legend i { display: inline-block; width: 22px; height: 8px; border-radius: 4px; vertical-align: middle; margin-right: 6px; }
+
+table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+th { font-size: .75rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+td.num { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+
+/* Código */
+pre.code {
+  margin: 0; background: var(--code-bg); color: var(--code-fg);
+  border-radius: 14px; padding: 16px 18px; overflow-x: auto;
+  font-family: var(--font-mono); font-size: clamp(12px, 1.02vw, 15px); line-height: 1.6;
+}
+pre.code .kw { color: var(--code-kw); font-weight: 600; }
+pre.code .str { color: var(--code-str); }
+pre.code .com { color: var(--code-com); font-style: italic; }
+pre.code .num { color: var(--code-num); }
+pre.code .bi { color: var(--code-fn); }
+pre.code mark { background: rgba(242, 166, 74, .16); color: inherit; display: inline-block; width: 100%; border-radius: 4px; }
+.terminal { background: var(--code-bg); color: var(--code-fg); border-radius: 14px; padding: 14px 18px; font-family: var(--font-mono); font-size: .88rem; overflow-x: auto; white-space: pre; margin: 0; }
+.terminal .prompt { color: var(--code-com); }
+.terminal .hl { color: var(--code-kw); }
+.terminal .ok { color: var(--code-str); font-weight: 600; }
+
+.big-num { font-family: var(--font-display); font-weight: 800; font-size: clamp(4rem, 11vw, 8rem); line-height: .9; color: var(--flow); font-variant-numeric: tabular-nums; }
+
+/* SVG del grafo */
+.g-pipe { stroke: var(--pipe); stroke-linecap: round; fill: none; }
+.g-flow { stroke: var(--flow); stroke-linecap: round; fill: none; transition: stroke-width .45s ease; }
+.g-path { stroke: var(--path); fill: none; stroke-linecap: round; stroke-dasharray: 10 8; animation: march 1s linear infinite; }
+.g-rev { stroke: var(--cut); fill: none; stroke-width: 3; stroke-dasharray: 7 6; animation: march 1s linear infinite; }
+.g-cutedge { stroke: var(--cut); fill: none; stroke-width: 3; stroke-linecap: round; }
+.g-blocked { stroke: var(--cut); stroke-width: 2.5; stroke-dasharray: 3 6; stroke-linecap: round; fill: none; }
+.g-pill.blocked { fill: var(--cut); stroke: var(--cut); }
+.g-label.blocked { fill: var(--surface); }
+.blocked-list { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: .9rem; }
+.blocked-list .tag { font-family: var(--font-mono); font-weight: 600; font-size: .85rem; padding: 2px 9px; border-radius: 8px; color: var(--cut); border: 1.5px solid var(--cut); }
+.blocked-list .tag.new { background: var(--cut); color: var(--surface); }
+.g-arrow { fill: var(--muted); }
+.g-arrow-path { fill: var(--path); }
+.g-arrow-rev { fill: var(--cut); }
+.g-pill { fill: var(--surface); stroke: var(--line); stroke-width: 1; }
+.g-pill.sat { fill: var(--ink); stroke: var(--ink); }
+.g-pill.onpath { stroke: var(--path); stroke-width: 2; }
+.g-pill.rev { stroke: var(--cut); stroke-width: 2; }
+.g-label { fill: var(--ink); font-family: var(--font-mono); font-size: 13px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.g-label.sat { fill: var(--bg); }
+.g-label.rev { fill: var(--cut); }
+.g-node { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.g-node.term { fill: var(--ink); }
+.g-node.onpath { stroke: var(--path); stroke-width: 4; }
+.g-node.cutside { fill: var(--cut-soft); stroke: var(--cut); }
+.g-node.term.cutside { fill: var(--cut); }
+.g-ntext { fill: var(--ink); font-family: var(--font-display); font-weight: 800; font-size: 19px; text-anchor: middle; dominant-baseline: central; }
+.g-ntext.term { fill: var(--bg); }
+.g-cut { fill: var(--cut-soft); stroke: var(--cut); stroke-width: 2; stroke-dasharray: 8 6; }
+.g-cuttext { fill: var(--cut); font-family: var(--font-display); font-weight: 800; font-size: 15px; }
+@keyframes march { to { stroke-dashoffset: -18; } }
+@media (prefers-reduced-motion: reduce) {
+  .g-path, .g-rev { animation: none; }
+  .g-flow { transition: none; }
+}
+
+@media (max-width: 860px) {
+  .split, .grid2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .bottombar .btn .lbl { display: none; }
+}
+</style>
+
+<section class="slide cover">
+  <div class="wrap">
+    <div class="split" style="align-items:center">
+      <div class="stack" style="gap:18px">
+        <span class="eyebrow" style="color:var(--muted)">Algoritmos sobre grafos · TP 2</span>
+        <h1>Ford<span class="hy">–</span>Fulkerson</h1>
+        <p class="lead">Cómo calcular cuánto puede circular, como máximo, por una red con capacidades limitadas.</p>
+      </div>
+      <div class="figure"><svg class="graph" data-mode="final-flow" viewBox="0 0 620 340" role="img" aria-label="Red de ejemplo con su flujo máximo"></svg></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="wrap">
+    <span class="eyebrow">El problema</span>
+    <h2>¿Cuánto flujo puede llegar de A a H?</h2>
+    <div class="split">
+      <div class="figure"><svg class="graph" data-mode="caps" viewBox="0 0 620 340" role="img" aria-label="Red con capacidades"></svg></div>
+      <div class="stack">
+        <p class="lead">Una red dirigida, como un sistema de caños. El flujo sale del <b>origen A</b> y llega al <b>destino H</b>. Cada arista tiene una <b>capacidad</b> máxima.</p>
+        <div class="card">
+          <h3>Capacidad</h3>
+          <span class="formula">0 ≤ f(u,v) ≤ c(u,v)</span>
+          <p>Por una arista no puede pasar más de lo que soporta.</p>
+        </div>
+        <div class="card">
+          <h3>Conservación</h3>
+          <span class="formula">lo que entra = lo que sale</span>
+          <p>En cada nodo intermedio no se pierde ni se acumula flujo.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="wrap">
+    <span class="eyebrow">La idea</span>
+    <h2>Buscar el camino que deja pasar más y restarlo</h2>
+    <div class="split">
+      <ol class="pseudo">
+<li>flujo ← 0</li>
+<li><span class="k">mientras</span> haya un camino de A a H con lugar:</li>
+<li>    P ← el camino que deja pasar el valor mayor</li>
+<li>    b ← menor capacidad que queda en P</li>
+<li>    <span class="k">para cada</span> arista (u,v) de P:</li>
+<li>        residual(u,v) −= b</li>
+<li>        residual(v,u) += b</li>
+<li>    flujo += b</li>
+<li><span class="k">devolver</span> flujo</li>
+      </ol>
+      <div class="stack">
+        <div class="card"><h3>Bloquear caminos</h3><p>Al restar, la arista más chica del camino queda en 0 y se bloquea. Cuando todos los caminos a H están bloqueados, terminamos.</p></div>
+        <div class="card"><h3>Valor de un camino</h3><p>Lo limita su arista más chica. Entre todos los caminos, elegimos el de valor mayor.</p></div>
+        <div class="card"><h3>Arista inversa</h3><p>Al mandar flujo de u a v se habilita v → u. Sirve para deshacer una mala elección.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-steps="6">
+  <div class="wrap">
+    <span class="eyebrow">Ejemplo paso a paso</span>
+    <h2 id="stepTitle">Estado inicial</h2>
+    <div class="split">
+      <div class="stack" style="gap:10px">
+        <div class="figure"><svg class="graph" id="stepGraph" viewBox="0 0 620 340" role="img" aria-label="Red durante la ejecución"></svg></div>
+        <div class="legend">
+          <span>número = capacidad que queda</span>
+          <span><i style="background:var(--flow)"></i>flujo enviado</span>
+          <span><i style="background:var(--path)"></i>camino elegido</span>
+          <span><i style="background:var(--cut)"></i>bloqueada (quedó en 0)</span>
+        </div>
+      </div>
+      <div class="stack">
+        <span class="iter-label" id="stepIter">Iteración 0 de 4</span>
+        <div class="path-chips" id="stepPath"></div>
+        <div class="stats">
+          <div class="stat"><div class="v" id="stepB">—</div><div class="l">Valor que se resta</div></div>
+          <div class="stat total"><div class="v" id="stepTotal">0</div><div class="l">Flujo total</div></div>
+        </div>
+        <p class="explain" id="stepText"></p>
+        <div class="blocked-list" id="stepBlocked"></div>
+        <div class="step-ctrl">
+          <button class="btn" id="stepPrev">‹ Paso</button>
+          <button class="btn primary" id="stepNext">Paso ›</button>
+          <div class="step-dots" id="stepDots"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="wrap">
+    <span class="eyebrow">Resultado</span>
+    <h2>Flujo máximo = 15</h2>
+    <div class="split">
+      <div class="stack" style="gap:10px">
+        <div class="figure"><svg class="graph" data-mode="cut" viewBox="0 0 620 340" role="img" aria-label="Flujo final y corte mínimo"></svg></div>
+        <p class="caption">S = {A, B, C, D}: los nodos a los que todavía se llega desde A. Cada etiqueta es flujo / capacidad.</p>
+      </div>
+      <div class="stack">
+        <div class="big-num">15</div>
+        <p>Lo que se restó en cada paso: 8 + 4 + 2 + 1 = 15. El algoritmo frena cuando no queda ningún camino sin bloquear.</p>
+        <div class="card">
+          <h3>Corte mínimo</h3>
+          <span class="formula">B→E + C→F + D→G = 9 + 4 + 2 = 15</span>
+          <p>Las aristas que salen de S están llenas. Es imposible mandar más de 15: el resultado es óptimo.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="wrap">
+    <span class="eyebrow">Código en Python</span>
+    <h2>La implementación</h2>
+    <div class="split">
+<pre class="code" data-mark="12-14">def ford_fulkerson(grafo, fuente, sumidero):
+    residual = construir_residual(grafo)
+    flujo_maximo = 0
+
+    while True:
+        camino = buscar_camino(residual, fuente, sumidero)
+        if camino is None:
+            break
+
+        aristas = list(zip(camino, camino[1:]))
+        cuello = min(residual[u][v] for u, v in aristas)
+        for u, v in aristas:
+            residual[u][v] -= cuello
+            residual[v][u] += cuello
+
+        flujo_maximo += cuello
+
+    return flujo_maximo</pre>
+      <div class="stack">
+        <p>Las líneas resaltadas son la resta: a cada arista del camino se le descuenta el valor enviado.</p>
+<pre class="terminal"><span class="prompt">$ python ford_fulkerson.py</span>
+Iteración 1: A -> B -> E -> H  <span class="hl">(+8)</span>
+Iteración 2: A -> D -> C -> F -> H  <span class="hl">(+4)</span>
+Iteración 3: A -> D -> G -> H  <span class="hl">(+2)</span>
+Iteración 4: A -> C -> B -> E -> F -> H  <span class="hl">(+1)</span>
+<span class="ok">Flujo máximo: 15</span></pre>
+        <p class="caption">Son los mismos caminos del ejemplo paso a paso.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="wrap">
+    <span class="eyebrow">Código en Python</span>
+    <h2>Elegir el camino de valor mayor</h2>
+    <div class="split">
+<pre class="code" data-mark="12-13">def buscar_camino(residual, origen, destino):
+    mejor = {origen: float("inf")}
+    anteriores = {origen: None}
+    pq = [(-float("inf"), origen)]
+
+    while pq:
+        valor_actual, u = heapq.heappop(pq)
+        valor_actual = -valor_actual
+        if u == destino:
+            break
+        for v, capacidad in residual[u].items():
+            nuevo_valor = min(valor_actual, capacidad)
+            if nuevo_valor > mejor.get(v, 0):
+                mejor[v] = nuevo_valor
+                anteriores[v] = u
+                heapq.heappush(pq, (-nuevo_valor, v))
+
+    if destino not in anteriores:
+        return None
+    return reconstruir_camino(anteriores, origen, destino)</pre>
+      <div class="stack">
+        <p>Es el mismo esquema que Dijkstra del TP 1, con dos cambios:</p>
+        <div class="card"><h3>Mayor en vez de menor</h3><p>La cola de prioridad saca primero el camino con valor más grande (por eso se guarda negativo).</p></div>
+        <div class="card"><h3>Mínimo en vez de suma</h3><p>El valor de un camino es <code>min(valor_actual, capacidad)</code>: lo limita su arista más chica.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="wrap">
+    <span class="eyebrow">Cierre</span>
+    <h2>Complejidad y usos</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3>Complejidad</h3>
+        <span class="formula">O(E · f*)</span>
+        <p>En general hay a lo sumo f* iteraciones (f* = flujo máximo). Elegir siempre el camino de valor mayor reduce mucho las iteraciones: acá bastaron 4.</p>
+      </div>
+      <div class="card">
+        <h3>Para qué sirve</h3>
+        <p>Redes de agua, tránsito o datos, asignar tareas a personas (emparejamiento) y separar figura y fondo en imágenes.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="bottombar">
+  <div class="nav">
+    <button class="btn" id="prev" aria-label="Diapositiva anterior">‹ <span class="lbl">Anterior</span></button>
+    <button class="btn primary" id="next" aria-label="Diapositiva siguiente"><span class="lbl">Siguiente</span> ›</button>
+  </div>
+  <div class="progress" id="progress"></div>
+  <span class="counter" id="counter">1 / 7</span>
+  <button class="btn" id="fsBtn">Pantalla completa</button>
+</footer>
+
+<script>
+(function () {
+  // ---------- Datos del grafo ----------
+  var NODES = { A: [50, 170], B: [210, 55], C: [210, 170], D: [210, 290], E: [400, 55], F: [400, 170], G: [400, 290], H: [570, 170] };
+  var EDGES = [["A","B",8],["A","C",5],["A","D",9],["C","B",3],["D","C",6],["B","E",9],["C","F",4],["D","G",2],["E","F",3],["G","F",2],["E","H",8],["F","H",5],["G","H",9]];
+  var SOURCE = "A", SINK = "H";
+  var CUT = { A: 1, B: 1, C: 1, D: 1 };
+  var R = 24;
+
+  function F(o) { var r = {}; EDGES.forEach(function (e) { r[e[0] + e[1]] = 0; }); for (var k in o) r[k] = o[k]; return r; }
+
+  var STEPS = [
+    { flows: F({}), path: null, b: null, total: 0,
+      title: "Estado inicial",
+      text: "Cada número es la capacidad que queda. En cada paso elegimos el camino que deja pasar el valor mayor y lo restamos: la arista más chica queda en 0 y se bloquea. Se repite hasta que todos los caminos a H estén bloqueados." },
+    { flows: F({AB:8, BE:8, EH:8}), prev: F({}), path: ["A","B","E","H"], b: 8, total: 8,
+      title: "Iteración 1: se restan 8",
+      text: "A → B → E → H tiene 8, 9 y 8: deja pasar 8. Al restar, A → B y E → H quedan en 0 y se bloquean. Se cierran todos los caminos que las usan." },
+    { flows: F({AB:8, BE:8, EH:8, AD:4, DC:4, CF:4, FH:4}), prev: F({AB:8, BE:8, EH:8}), path: ["A","D","C","F","H"], b: 4, total: 12,
+      title: "Iteración 2: se restan 4",
+      text: "A → D → C → F → H tiene 9, 6, 4 y 5: deja pasar 4. C → F se bloquea: ya no se puede ir de C a F directo." },
+    { flows: F({AB:8, BE:8, EH:8, AD:6, DC:4, CF:4, FH:4, DG:2, GH:2}), prev: F({AB:8, BE:8, EH:8, AD:4, DC:4, CF:4, FH:4}), path: ["A","D","G","H"], b: 2, total: 14,
+      title: "Iteración 3: se restan 2",
+      text: "A → D → G → H tiene 5, 2 y 9: deja pasar 2. D → G se bloquea: a G ya no llega nada, así que G → H queda inutilizable aunque le sobre capacidad." },
+    { flows: F({AB:8, BE:9, EH:8, AD:6, DC:4, CF:4, FH:5, DG:2, GH:2, AC:1, CB:1, EF:1}), prev: F({AB:8, BE:8, EH:8, AD:6, DC:4, CF:4, FH:4, DG:2, GH:2}), path: ["A","C","B","E","F","H"], b: 1, total: 15,
+      title: "Iteración 4: se resta 1",
+      text: "Queda un solo camino abierto: A → C → B → E → F → H, con 5, 3, 1, 3 y 1. Deja pasar 1 y se bloquean B → E y F → H." },
+    { flows: F({AB:8, BE:9, EH:8, AD:6, DC:4, CF:4, FH:5, DG:2, GH:2, AC:1, CB:1, EF:1}), path: null, b: null, total: 15, cut: CUT,
+      title: "Fin: flujo máximo 15",
+      text: "Todos los caminos de A a H pasan por alguna arista bloqueada, así que el algoritmo termina. Desde A sólo se llega a B, C y D: B → E, C → F y D → G cierran el paso. Lo que se restó: 8 + 4 + 2 + 1 = 15." }
+  ];
+  var LAST = STEPS.length - 1;
+  var FINAL = STEPS[LAST].flows;
+
+  // ---------- Dibujo ----------
+  var NS = "http://www.w3.org/2000/svg";
+  var uid = 0;
+  function el(tag, attrs, parent) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+  function onPath(path, u, v) {
+    if (!path) return false;
+    for (var i = 0; i < path.length - 1; i++) if (path[i] === u && path[i + 1] === v) return true;
+    return false;
+  }
+
+  function drawGraph(svg, opt) {
+    svg.innerHTML = "";
+    var id = "g" + (uid++);
+    var defs = el("defs", {}, svg);
+    [["a", "g-arrow"], ["p", "g-arrow-path"], ["r", "g-arrow-rev"]].forEach(function (m) {
+      var mk = el("marker", { id: id + m[0], viewBox: "0 0 10 10", refX: "8", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse" }, defs);
+      el("path", { d: "M0,0 L10,5 L0,10 z", "class": m[1] }, mk);
+    });
+
+    var cutSet = opt.cut || {};
+    if (opt.cut) {
+      el("ellipse", { cx: 135, cy: 172, rx: 122, ry: 158, "class": "g-cut" }, svg);
+      el("text", { x: 30, y: 60, "class": "g-cuttext" }, svg).textContent = "S";
+    }
+
+    var labels = [];
+    EDGES.forEach(function (e) {
+      var u = e[0], v = e[1], c = e[2], key = u + v;
+      var p = NODES[u], q = NODES[v];
+      var dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+      var x1 = p[0] + ux * R, y1 = p[1] + uy * R, x2 = q[0] - ux * (R + 6), y2 = q[1] - uy * (R + 6);
+      var f = opt.flows ? opt.flows[key] : 0;
+      var isCut = opt.cut && cutSet[u] && !cutSet[v];
+      el("line", { x1: x1, y1: y1, x2: x2, y2: y2, "class": "g-pipe", "stroke-width": 12 }, svg);
+      if (opt.flows && f > 0) el("line", { x1: x1, y1: y1, x2: x2, y2: y2, "class": "g-flow", "stroke-width": Math.max(2.5, 12 * f / c) }, svg);
+      var path = onPath(opt.path, u, v);
+      // Una arista en 0 queda bloqueada: ningún camino puede usarla
+      var blocked = opt.remaining && f === c && !path;
+      if (blocked) el("line", { x1: x1, y1: y1, x2: x2, y2: y2, "class": "g-blocked" }, svg);
+      else if (isCut) el("line", { x1: x1, y1: y1, x2: x2, y2: y2, "class": "g-cutedge", "marker-end": "url(#" + id + "r)" }, svg);
+      else if (path) el("line", { x1: x1, y1: y1, x2: x2, y2: y2, "class": "g-path", "stroke-width": 4, "marker-end": "url(#" + id + "p)" }, svg);
+      else el("line", { x1: x2 - ux * 2, y1: y2 - uy * 2, x2: x2, y2: y2, stroke: "none", "marker-end": "url(#" + id + "a)" }, svg);
+      // Modo "resta": se muestra lo que queda; en el camino del paso, la resta hecha
+      var txt;
+      if (opt.remaining) txt = path ? (c - opt.prev[key]) + "−" + opt.b + "=" + (c - f) : String(c - f);
+      else txt = opt.flows ? f + "/" + c : String(c);
+      var cls = (opt.flows && f === c) ? "sat" : "";
+      if (path) cls += " onpath";
+      if (blocked) { cls = "blocked"; txt = "✕ 0"; }
+      labels.push({ x: (p[0] + q[0]) / 2, y: (p[1] + q[1]) / 2, txt: txt, cls: cls });
+    });
+
+    labels.forEach(function (l) {
+      var w = l.txt.length * 8.4 + 14;
+      el("rect", { x: l.x - w / 2, y: l.y - 12, width: w, height: 24, rx: 12, "class": "g-pill " + l.cls }, svg);
+      el("text", { x: l.x, y: l.y + 1, "class": "g-label " + l.cls }, svg).textContent = l.txt;
+    });
+
+    Object.keys(NODES).forEach(function (n) {
+      var p = NODES[n], term = n === SOURCE || n === SINK;
+      var cls = "g-node" + (term ? " term" : "") + (opt.path && opt.path.indexOf(n) >= 0 ? " onpath" : "") + (cutSet[n] ? " cutside" : "");
+      el("circle", { cx: p[0], cy: p[1], r: R, "class": cls }, svg);
+      el("text", { x: p[0], y: p[1] + 1, "class": "g-ntext" + (term && !cutSet[n] ? " term" : "") }, svg).textContent = n;
+    });
+  }
+
+  document.querySelectorAll("svg.graph[data-mode]").forEach(function (svg) {
+    var m = svg.getAttribute("data-mode");
+    if (m === "caps") drawGraph(svg, {});
+    else if (m === "final-flow") drawGraph(svg, { flows: FINAL });
+    else if (m === "cut") drawGraph(svg, { flows: FINAL, cut: CUT });
+  });
+
+  // ---------- Paso a paso ----------
+  var step = 0;
+  var stepGraph = document.getElementById("stepGraph");
+  var dots = document.getElementById("stepDots");
+  STEPS.forEach(function (_, i) {
+    var b = document.createElement("button");
+    b.setAttribute("aria-label", i === 0 ? "Estado inicial" : i === LAST ? "Fin" : "Iteración " + i);
+    b.addEventListener("click", function () { setStep(i); });
+    dots.appendChild(b);
+  });
+  function setStep(i) {
+    step = Math.max(0, Math.min(STEPS.length - 1, i));
+    var s = STEPS[step];
+    drawGraph(stepGraph, { flows: s.flows, prev: s.prev, b: s.b, path: s.path, cut: s.cut, remaining: true });
+    document.getElementById("stepTitle").textContent = s.title;
+    document.getElementById("stepIter").textContent = step === LAST ? "Fin del algoritmo" : "Iteración " + step + " de " + (LAST - 1);
+    document.getElementById("stepB").textContent = s.b === null ? "—" : s.b;
+    document.getElementById("stepTotal").textContent = s.total;
+    document.getElementById("stepText").textContent = s.text;
+    var pc = document.getElementById("stepPath");
+    pc.innerHTML = "";
+    if (s.path) {
+      s.path.forEach(function (n, k) {
+        if (k > 0) {
+          var a = document.createElement("span");
+          a.className = "a";
+          a.textContent = "→";
+          pc.appendChild(a);
+        }
+        var c = document.createElement("span"); c.className = "n"; c.textContent = n; pc.appendChild(c);
+      });
+    } else {
+      var t = document.createElement("span"); t.style.color = "var(--muted)";
+      t.textContent = step === 0 ? "Todavía no se buscó ningún camino" : "Sin camino disponible";
+      pc.appendChild(t);
+    }
+    var bl = document.getElementById("stepBlocked");
+    bl.innerHTML = "";
+    var before = step > 0 ? STEPS[step - 1].flows : null;
+    var lbl = document.createElement("span"); lbl.style.color = "var(--muted)"; lbl.textContent = "Bloqueadas:"; bl.appendChild(lbl);
+    var any = false;
+    EDGES.forEach(function (e) {
+      var key = e[0] + e[1];
+      if (s.flows[key] !== e[2]) return;
+      any = true;
+      var tag = document.createElement("span");
+      tag.className = "tag" + (before && before[key] !== e[2] ? " new" : "");
+      tag.textContent = e[0] + " → " + e[1];
+      bl.appendChild(tag);
+    });
+    if (!any) { var none = document.createElement("span"); none.textContent = "ninguna"; bl.appendChild(none); }
+    Array.prototype.forEach.call(dots.children, function (d, k) { d.classList.toggle("on", k === step); });
+    document.getElementById("stepPrev").disabled = step === 0;
+    document.getElementById("stepNext").disabled = step === LAST;
+  }
+  document.getElementById("stepPrev").addEventListener("click", function () { setStep(step - 1); });
+  document.getElementById("stepNext").addEventListener("click", function () { setStep(step + 1); });
+  setStep(0);
+
+  // ---------- Resaltado de Python ----------
+  var RX = /(#[^\n]*)|(f?"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\b(def|return|if|else|for|in|while|True|False|None|not|and|is|break)\b|\b(set|min|list|zip|print|enumerate|range|len)\b|\b(\d+)\b/g;
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function hl(line) {
+    var out = "", last = 0, m;
+    RX.lastIndex = 0;
+    while ((m = RX.exec(line))) {
+      out += esc(line.slice(last, m.index));
+      var cls = m[1] ? "com" : m[2] ? "str" : m[3] ? "kw" : m[4] ? "bi" : "num";
+      out += '<span class="' + cls + '">' + esc(m[0]) + "</span>";
+      last = RX.lastIndex;
+    }
+    return out + esc(line.slice(last));
+  }
+  document.querySelectorAll("pre.code").forEach(function (pre) {
+    var marks = {};
+    (pre.getAttribute("data-mark") || "").split(",").forEach(function (r) {
+      if (!r) return;
+      var ab = r.split("-"), a = +ab[0], b = +(ab[1] || ab[0]);
+      for (var i = a; i <= b; i++) marks[i] = 1;
+    });
+    pre.innerHTML = pre.textContent.split("\n").map(function (line, i) {
+      return marks[i + 1] ? "<mark>" + hl(line) + "</mark>" : hl(line);
+    }).join("\n");
+  });
+
+  // ---------- Navegación ----------
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var cur = 0;
+  var progress = document.getElementById("progress");
+  slides.forEach(function (s, i) {
+    var seg = document.createElement("span");
+    seg.title = "Diapositiva " + (i + 1);
+    seg.addEventListener("click", function () { show(i); });
+    progress.appendChild(seg);
+  });
+
+  function show(i) {
+    cur = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function (x, k) { x.hidden = k !== cur; });
+    document.getElementById("counter").textContent = (cur + 1) + " / " + slides.length;
+    Array.prototype.forEach.call(progress.children, function (seg, k) { seg.classList.toggle("on", k <= cur); });
+    document.getElementById("prev").disabled = cur === 0;
+    document.getElementById("next").disabled = cur === slides.length - 1;
+  }
+  function next() {
+    if (slides[cur].hasAttribute("data-steps") && step < STEPS.length - 1) { setStep(step + 1); return; }
+    show(cur + 1);
+  }
+  function prev() {
+    if (slides[cur].hasAttribute("data-steps") && step > 0) { setStep(step - 1); return; }
+    show(cur - 1);
+  }
+  document.getElementById("next").addEventListener("click", next);
+  document.getElementById("prev").addEventListener("click", prev);
+
+  function toggleFs() {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(function () {});
+    } catch (e) {}
+  }
+  document.getElementById("fsBtn").addEventListener("click", toggleFs);
+
+  document.addEventListener("keydown", function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") { e.preventDefault(); next(); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); prev(); }
+    else if (e.key === "Home") show(0);
+    else if (e.key === "End") show(slides.length - 1);
+    else if (e.key === "f" || e.key === "F") toggleFs();
+  });
+
+  var touchX = null;
+  document.addEventListener("touchstart", function (e) { touchX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener("touchend", function (e) {
+    if (touchX === null) return;
+    var dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 70) { dx < 0 ? next() : prev(); }
+    touchX = null;
+  });
+
+  show(0);
+})();
+</script>
