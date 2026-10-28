@@ -148,6 +148,21 @@ pre.code {
   border-radius: 14px; padding: 16px 18px; overflow-x: auto;
   font-family: var(--font-mono); font-size: clamp(12px, 1.02vw, 15px); line-height: 1.6;
 }
+pre.code .code-step { display: inline-block; width: 100%; box-sizing: border-box; border-left: 3px solid var(--step-color); padding-left: 8px; background: var(--step-bg); }
+pre.code .step-1, .step-key.step-1 { --step-color: #65b8ff; --step-bg: rgba(101,184,255,.12); }
+pre.code .step-2, .step-key.step-2 { --step-color: #eab65f; --step-bg: rgba(234,182,95,.12); }
+pre.code .step-3, .step-key.step-3 { --step-color: #b895f4; --step-bg: rgba(184,149,244,.12); }
+pre.code .step-4, .step-key.step-4 { --step-color: #71cf9a; --step-bg: rgba(113,207,154,.12); }
+.step-key { border-left: 4px solid var(--step-color); background: var(--step-bg); padding: 6px 12px; border-radius: 6px; font-size: clamp(1rem, 1.25vw, 1.15rem); line-height: 1.25; align-self: center; }
+.code-legend { display: grid; grid-template-rows: repeat(25, calc(clamp(12px, 1.02vw, 15px) * 1.6)); padding-top: 16px; }
+.code-legend .step-1 { grid-row: 2 / 5; }
+.code-legend .step-2 { grid-row: 6 / 10; }
+.code-legend .step-3 { grid-row: 11 / 18; }
+.code-legend .step-4 { grid-row: 19 / 23; }
+.code-legend.search .step-1 { grid-row: 2 / 6; }
+.code-legend.search .step-2 { grid-row: 7 / 13; }
+.code-legend.search .step-3 { grid-row: 14 / 21; }
+.code-legend.search .step-4 { grid-row: 22 / 26; }
 pre.code .kw { color: var(--code-kw); font-weight: 600; }
 pre.code .str { color: var(--code-str); }
 pre.code .com { color: var(--code-com); font-style: italic; }
@@ -200,6 +215,8 @@ pre.code mark { background: rgba(242, 166, 74, .16); color: inherit; display: in
 
 @media (max-width: 860px) {
   .split, .grid2 { grid-template-columns: 1fr; }
+  .code-legend { display: grid; grid-template-rows: none; gap: 10px; padding-top: 0; }
+  .code-legend .step-key, .code-legend.search .step-key { grid-row: auto; }
 }
 @media (max-width: 480px) {
   .bottombar .btn .lbl { display: none; }
@@ -327,9 +344,10 @@ pre.code mark { background: rgba(242, 166, 74, .16); color: inherit; display: in
     <span class="eyebrow">Código en Python</span>
     <h2>La implementación</h2>
     <div class="split">
-<pre class="code" data-mark="12-14">def ford_fulkerson(grafo, fuente, sumidero):
+<pre class="code" data-steps-code="2-4,6-9,11-17,19-22">def ford_fulkerson(grafo, fuente, sumidero):
     residual = construir_residual(grafo)
     flujo_maximo = 0
+    caminos = []
 
     while True:
         camino = buscar_camino(residual, fuente, sumidero)
@@ -337,25 +355,32 @@ pre.code mark { background: rgba(242, 166, 74, .16); color: inherit; display: in
             break
 
         aristas = list(zip(camino, camino[1:]))
+
         cuello = min(residual[u][v] for u, v in aristas)
+
         for u, v in aristas:
             residual[u][v] -= cuello
             residual[v][u] += cuello
 
         flujo_maximo += cuello
+        caminos.append((camino, cuello))
 
-    return flujo_maximo</pre>
-      <div class="stack">
-        <p>Las líneas resaltadas son la resta: a cada arista del camino se le descuenta el valor enviado.</p>
+    return flujo_maximo, caminos</pre>
+      <div class="code-legend">
+        <div class="step-key step-1"><b>1. Preparar:</b> crear la red residual e iniciar el flujo.</div>
+        <div class="step-key step-2"><b>2. Buscar:</b> encontrar un camino; si no existe, terminar.</div>
+        <div class="step-key step-3"><b>3. Actualizar:</b> calcular el cuello de botella y ajustar las capacidades residuales.</div>
+        <div class="step-key step-4"><b>4. Acumular:</b> sumar el flujo, guardar el camino y devolver el resultado.</div>
+
+
+      </div>
+    </div>
 <pre class="terminal"><span class="prompt">$ python ford_fulkerson.py</span>
 Iteración 1: A -> B -> E -> H  <span class="hl">(+8)</span>
 Iteración 2: A -> D -> C -> F -> H  <span class="hl">(+4)</span>
 Iteración 3: A -> D -> G -> H  <span class="hl">(+2)</span>
 Iteración 4: A -> C -> B -> E -> F -> H  <span class="hl">(+1)</span>
 <span class="ok">Flujo máximo: 15</span></pre>
-        <p class="caption">Son los mismos caminos del ejemplo paso a paso.</p>
-      </div>
-    </div>
   </div>
 </section>
 
@@ -364,30 +389,36 @@ Iteración 4: A -> C -> B -> E -> F -> H  <span class="hl">(+1)</span>
     <span class="eyebrow">Código en Python</span>
     <h2>Elegir el camino de valor mayor</h2>
     <div class="split">
-<pre class="code" data-mark="12-13">def buscar_camino(residual, origen, destino):
+<pre class="code" data-steps-code="2-5,7-12,14-20,22-25">def buscar_camino(residual, origen, destino):
     mejor = {origen: float("inf")}
     anteriores = {origen: None}
+
     pq = [(-float("inf"), origen)]
 
     while pq:
         valor_actual, u = heapq.heappop(pq)
         valor_actual = -valor_actual
+
         if u == destino:
             break
+
         for v, capacidad in residual[u].items():
             nuevo_valor = min(valor_actual, capacidad)
-            if nuevo_valor > mejor.get(v, 0):
+
+            if nuevo_valor &gt; mejor.get(v, 0):
                 mejor[v] = nuevo_valor
                 anteriores[v] = u
                 heapq.heappush(pq, (-nuevo_valor, v))
 
     if destino not in anteriores:
         return None
+
     return reconstruir_camino(anteriores, origen, destino)</pre>
-      <div class="stack">
-        <p>Es el mismo esquema que Dijkstra del TP 1, con dos cambios:</p>
-        <div class="card"><h3>Mayor en vez de menor</h3><p>La cola de prioridad saca primero el camino con valor más grande (por eso se guarda negativo).</p></div>
-        <div class="card"><h3>Mínimo en vez de suma</h3><p>El valor de un camino es <code>min(valor_actual, capacidad)</code>: lo limita su arista más chica.</p></div>
+      <div class="code-legend search">
+        <div class="step-key step-1"><b>1. Preparar:</b> registrar el mejor valor y crear la cola de prioridad.</div>
+        <div class="step-key step-2"><b>2. Elegir:</b> extraer el camino de mayor valor y detenerse al llegar al destino.</div>
+        <div class="step-key step-3"><b>3. Explorar:</b> comparar el cuello de botella de cada vecino y actualizar los mejores caminos.</div>
+        <div class="step-key step-4"><b>4. Reconstruir:</b> devolver el camino encontrado, o <code>None</code> si no existe.</div>
       </div>
     </div>
   </div>
@@ -613,8 +644,15 @@ Iteración 4: A -> C -> B -> E -> F -> H  <span class="hl">(+1)</span>
       var ab = r.split("-"), a = +ab[0], b = +(ab[1] || ab[0]);
       for (var i = a; i <= b; i++) marks[i] = 1;
     });
+    var steps = {};
+    (pre.getAttribute("data-steps-code") || "").split(",").forEach(function (r, index) {
+      if (!r) return;
+      var ab = r.split("-"), a = +ab[0], b = +(ab[1] || ab[0]);
+      for (var i = a; i <= b; i++) steps[i] = index + 1;
+    });
     pre.innerHTML = pre.textContent.split("\n").map(function (line, i) {
-      return marks[i + 1] ? "<mark>" + hl(line) + "</mark>" : hl(line);
+      var content = marks[i + 1] ? "<mark>" + hl(line) + "</mark>" : hl(line);
+      return steps[i + 1] ? '<span class="code-step step-' + steps[i + 1] + '">' + content + '</span>' : content;
     }).join("\n");
   });
 
